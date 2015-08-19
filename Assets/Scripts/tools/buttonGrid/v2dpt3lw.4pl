@@ -191,8 +191,7 @@ namespace Assets.Scripts.tools.buttonGrid
         }
 
         /// <summary>
-        /// Insert a number of buttons and returns a list. The reason for this design is so the list of buttons' callback can be modified.
-        /// Note: if you need to construct multiple buttons in the beginning of the scene, ensure that it isn't performed during Awake, as the scene isn't rendered, calculation of widths and heights of a rectransform will most likely give you undesired results. 
+        /// Insert a number of buttons and returns a list. The reason for this design is so the list of buttons' callback can be modified
         /// </summary>
         public List<IterableButton> InsertMultipleButtons(int n )
         {
@@ -797,11 +796,12 @@ namespace Assets.Scripts.tools.buttonGrid
         /// <param name="button"></param>
         private void UpdateHorizontalNavigation(IterableButton button)
         {
-            Navigation updatedNavigation = button.Navigation;
+            Navigation updatedNavigation = new Navigation();
             updatedNavigation.mode = Navigation.Mode.Explicit;
             //where is the element located in the Grid? 
             int row = button.RowIndex;
-            int column = button.ColumnIndex; 
+            int column = button.ColumnIndex;
+            Debug.Log("row: " + row + " Column " + column);
 
             //update left and right
             if (column == 0)
@@ -909,9 +909,9 @@ namespace Assets.Scripts.tools.buttonGrid
         /// <returns></returns>
         private int CalculateMaxButtonsPerRow()
         {
-            float width = ParentRectTransform.rect.width - (_gridLayout.padding.left + _gridLayout.padding.right); 
-            float buttonWidth = _gridLayout.cellSize.x + _gridLayout.spacing.x; 
-            float allowable = Mathf.Floor(width / buttonWidth); 
+            float width = ParentRectTransform.rect.width - (_gridLayout.padding.left + _gridLayout.padding.right);
+            float buttonWidth = _gridLayout.cellSize.x + _gridLayout.spacing.x;
+            float allowable = Mathf.Floor(width / buttonWidth);
             return (int)allowable;
         }
 

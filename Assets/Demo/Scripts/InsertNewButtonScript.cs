@@ -1,15 +1,19 @@
 ﻿using UnityEngine;
-using System.Collections;
+using Assets.Scripts.tools.buttonGrid;
 
-public class InsertNewButtonScript : MonoBehaviour {
+public class InsertNewButtonScript : MonoBehaviour
+{
 
-	// Use this for initialization
-	void Start () {
-	
-	}
-	
-	// Update is called once per frame
-	void Update () {
-	
-	}
+    public ButtonGrid Grid;
+    public int NumberOfButtons;
+
+    void Start()
+    {
+         Grid.InsertMultipleButtons(NumberOfButtons);
+    }
+    public void InsertNewButton()
+    {
+        
+         Grid.InsertNewButton();
+    }
 }

@@ -191,8 +191,7 @@ namespace Assets.Scripts.tools.buttonGrid
         }
 
         /// <summary>
-        /// Insert a number of buttons and returns a list. The reason for this design is so the list of buttons' callback can be modified.
-        /// Note: if you need to construct multiple buttons in the beginning of the scene, ensure that it isn't performed during Awake, as the scene isn't rendered, calculation of widths and heights of a rectransform will most likely give you undesired results. 
+        /// Insert a number of buttons and returns a list. The reason for this design is so the list of buttons' callback can be modified
         /// </summary>
         public List<IterableButton> InsertMultipleButtons(int n )
         {
