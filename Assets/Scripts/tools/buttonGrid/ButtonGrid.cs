@@ -20,25 +20,33 @@ namespace Assets.Scripts.tools.buttonGrid
         private List<ButtonRow> _grid;
         private List<IterableButton> _inactiveButtonPool;
         private ButtonRow _lastRowUsed;//The list that was used last. Keep a reference to this in order to add button components to this list
-        
-        private List<IterableButton> _topRow;
+
+        private List<IterableButton> _visibleTopRow;
         private List<IterableButton> _rightColumn;
         private List<IterableButton> _leftColumn;
-
+        private List<IterableButton> _visibleBottomRow; 
         [SerializeField]
         private GridLayoutGroup _gridLayout; // The grid layout the buttons would be in
         [SerializeField]
         private RectTransform _parentRectTransform; //This is the parent rect transform of buttons in a grid.
         private IterableButton _rootButton;
-
+        private ScrollRect _groupScrollRect;
         private bool _isUpdating = false;
         private Stack<float> _updateNavRequestStack;  //stack used on whenever navigation is updated. 
         private int _count; //total number of elements in the grid
         private int MaxButtonsPerRow { get { return CalculateMaxButtonsPerRow(); } }
-         
+
 
 
         #region properties
+        /// <summary>
+        /// Wrap navigation around top?
+        /// </summary>
+        public bool WrapVerticalNavigation { get; set; }
+        /// <summary>
+        /// Wrap navigation horizontally
+        /// </summary>
+        public bool WrapHorizontalNavigation { get; set; }
         public List<ButtonRow> Grid
         {
             get
@@ -52,17 +60,17 @@ namespace Assets.Scripts.tools.buttonGrid
             set { _grid = value; }
         }
 
-        public List<IterableButton> TopRow
+        public List<IterableButton> VisibleTopRow
         {
             get
             {
-                if (_topRow == null)
+                if (_visibleTopRow == null)
                 {
-                    _topRow = new List<IterableButton>();
+                    _visibleTopRow = new List<IterableButton>();
                 }
-                return _topRow;
+                return _visibleTopRow;
             }
-            set { _topRow = value; }
+            set { _visibleTopRow = value; }
         }
 
         public List<IterableButton> RightColumn
@@ -89,6 +97,18 @@ namespace Assets.Scripts.tools.buttonGrid
                 return _leftColumn;
             }
             set { _leftColumn = value; }
+        }
+        public List<IterableButton> VisibleBottomRow
+        {
+            get
+            {
+                if (_visibleBottomRow == null)
+                {
+                    _visibleBottomRow = new List<IterableButton>();
+                }
+                return _visibleBottomRow;
+            }
+            set { _visibleBottomRow = value; }
         }
 
         public RectTransform ParentRectTransform
@@ -126,10 +146,10 @@ namespace Assets.Scripts.tools.buttonGrid
 
         void Awake()
         {
-
+            _groupScrollRect = transform.parent.GetComponent<ScrollRect>();
         }
- 
-  
+
+
         /// <summary>
         /// If the field Button prefab is set to null, create a generic button, returning its IterableButton component
         /// </summary>
@@ -144,14 +164,14 @@ namespace Assets.Scripts.tools.buttonGrid
                 if (ButtonPrefab == null)
                 {
                     var emptyGameObject = new GameObject("Button");
-                    emptyGameObject.transform.SetParent(ParentRectTransform);  
+                    emptyGameObject.transform.SetParent(ParentRectTransform);
                     emptyGameObject.AddComponent<Image>();
                     Button button = emptyGameObject.AddComponent<Button>();
                     ColorBlock colors = button.colors;
                     colors.highlightedColor = HighlightedButtonColor;
                     button.colors = colors;
                     IterableButton b = emptyGameObject.AddComponent<IterableButton>();
-                    b.Init(rowId, columnId, button); 
+                    b.Init(rowId, columnId, button);
                     b.transform.SetAsLastSibling();
                     return b;
 
@@ -160,7 +180,7 @@ namespace Assets.Scripts.tools.buttonGrid
                     try
                     {
                         GameObject go = Instantiate(ButtonPrefab);
-                        go.transform.SetParent(ParentRectTransform); 
+                        go.transform.SetParent(ParentRectTransform);
                         IterableButton b = go.AddComponent<IterableButton>();
                         Button button = GetComponent<Button>();
                         ColorBlock colors = button.colors;
@@ -201,14 +221,14 @@ namespace Assets.Scripts.tools.buttonGrid
         /// Insert a number of buttons and returns a list. The reason for this design is so the list of buttons' callback can be modified.
         /// Note: if you need to construct multiple buttons in the beginning of the scene, ensure that it isn't performed during Awake, as the scene isn't rendered, calculation of widths and heights of a rectransform will most likely give you undesired results. 
         /// </summary>
-        public List<IterableButton> InsertMultipleButtons(int n )
+        public List<IterableButton> InsertMultipleButtons(int n)
         {
             List<IterableButton> listOfbuttons = new List<IterableButton>(n);
-            for (int i = 0; i < n; i ++)
+            for (int i = 0; i < n; i++)
             {
-             listOfbuttons.Add(InsertNewButtonNoNavUpdate());
+                listOfbuttons.Add(InsertNewButtonNoNavUpdate());
             }
-            
+
             StartCoroutine(UpdateGridNav());
             return listOfbuttons;
 
@@ -242,15 +262,15 @@ namespace Assets.Scripts.tools.buttonGrid
                     _lastRowUsed = newRow;
                 }
                 button = _rootButton;
-                 EventSystem.current.SetSelectedGameObject(_rootButton.Button.gameObject );
- 
+                EventSystem.current.SetSelectedGameObject(_rootButton.Button.gameObject);
+
             }
             else //yes. now check if its possible to insert this new button into the last row that was used.
             {
                 IterableButton newIterableButton;
                 //first, check if there are too many buttons in the last row used. if there are none, insert this button, then update navigation pointers
                 if (_lastRowUsed.Count < MaxButtonsPerRow)
-                { 
+                {
                     int newColumnIndex = _lastRowUsed.Count;
                     int rowIndex = _lastRowUsed.RowId;
                     newIterableButton = BuildIterableButton(rowIndex, newColumnIndex);
@@ -267,7 +287,7 @@ namespace Assets.Scripts.tools.buttonGrid
                     _lastRowUsed = newButtonRow;
                 }
                 button = newIterableButton;
-            } 
+            }
             _count++;
             return button;
         }
@@ -292,16 +312,98 @@ namespace Assets.Scripts.tools.buttonGrid
                 }
             }
         }
-      
-        
+
+        /// <summary>
+        /// returns the current visible top row of buttons
+        /// </summary>
         private void UpdateTopRow()
         {
+            if (_count == 0) //There are no buttons in the grid
+            {
+                return;
+            }
+            if (_count == 1)
+            {
+                VisibleTopRow = new List<IterableButton>(1);
+                VisibleTopRow.Add(_rootButton);
+                return;
+            }
+            IterableButton button =_rootButton;
+            //traverse the left column starting from the top, break on first visible button
+            for (int i = 0; i < LeftColumn.Count; i++)
+            {
+                button = LeftColumn[i];
+                if (ButtonGridTools.CheckIfButtonOutofBoundsTop(_gridLayout, _groupScrollRect, ParentRectTransform,
+                    button))
+                {
+                    break;
+                }
+            }
+            if (button != null)
+            {
+                //traverse the row the button is in 
+                int index = button.RowIndex;
+                for (int i = 0; i < Grid[index].Count; i++)
+                {
+                    VisibleTopRow.Add(Grid[index].Row[i]);
+                }
+            }
+        }
+
+
+        private void UpdateBottomRow()
+        {
+            if (_count == 0) //There are no buttons in the grid
+            {
+                return;
+            }
+            if (_count == 1)
+            {
+                VisibleTopRow = new List<IterableButton>(1);
+                VisibleTopRow.Add(_rootButton);
+                return;
+            }
+            IterableButton button = _rootButton;
+            //traverse the left column starting from the bottom, break on first visible button
+            for (int i = LeftColumn.Count; i >0; i++)
+            {
+                button = LeftColumn[i];
+                if (ButtonGridTools.CheckIfButtonOutBoundsBottom(_gridLayout, _groupScrollRect, ParentRectTransform,
+                    button))
+                {
+                    break;
+                }
+            }
+            if (button != null)
+            {
+                //traverse the row the button is in 
+                int index = button.RowIndex;
+                for (int i = 0; i < Grid[index].Count; i++)
+                {
+                    .Add(Grid[index].Row[i]);
+                }
+            }
+        }
+        private void UpdateLeftColumn()
+        {
+            LeftColumn = new List<IterableButton>(Grid.Count);
+            for (int i = 0; i < Grid.Count; i++)
+            {
+                ButtonRow br = Grid[i];
+                LeftColumn.Add(br.Row[0]);
+            }
 
         }
-        private void UpdateLeftColumn() { }
 
         private void UpdateRightColumn()
         {
+            RightColumn = new List<IterableButton>(Grid.Count);
+            for (int i = 0; i < Grid.Count; i++)
+            {
+                ButtonRow br = Grid[i];
+                int lastIndex = br.Count - 1;
+                LeftColumn.Add(br.Row[lastIndex]);
+            }
         }
         /// <summary>
         ///helper method that removes a button and places it in the inactive pool 
@@ -358,7 +460,7 @@ namespace Assets.Scripts.tools.buttonGrid
 
         }
 
-         
+
         /// <summary>
         ///  Updates the grid's navigation 
         /// </summary>
@@ -369,14 +471,14 @@ namespace Assets.Scripts.tools.buttonGrid
             while (_isUpdating)
             {
                 yield return null;
-            }  
+            }
             //first check if the stack size is 0, if it is then the stack has been cleared. return a break.  
-            if (UpdateNavRequestStack.Count == 0)  
+            if (UpdateNavRequestStack.Count == 0)
             {
                 yield break;
             }
             UpdateNavRequestStack.Pop(); //pop the stack in order to prevent any more update calls
-           //clear the stack
+            //clear the stack
             UpdateNavRequestStack.Clear();
             _isUpdating = true;
             for (int i = 0; i < Grid.Count; i++)
@@ -405,7 +507,7 @@ namespace Assets.Scripts.tools.buttonGrid
                                 updatedNavigationComponent.selectOnDown = Grid[i + 1].Row[j].Button;
                             }
                             //otherwise point to the first column on the first row
-                            else
+                            else if (WrapVerticalNavigation)
                             {
                                 updatedNavigationComponent.selectOnDown = Grid[0].Row[j].Button;
                             }
@@ -419,13 +521,14 @@ namespace Assets.Scripts.tools.buttonGrid
                             //if at the last row
                             if (i == Grid.Count - 1)
                             {
-                                updatedNavigationComponent.selectOnDown = Grid[0].Row[j].Button;
+                                if (WrapVerticalNavigation)
+                                {
+                                    updatedNavigationComponent.selectOnDown = Grid[0].Row[j].Button;
+                                }
                                 updatedNavigationComponent.selectOnUp = Grid[i - 1].Row[j].Button;
-                                //check if there is an element above we can point to
 
                             }
                         }
-                        //check if we're at the last row
 
                     }
                     Grid[i].Row[j].Navigation = updatedNavigationComponent;
@@ -473,13 +576,13 @@ namespace Assets.Scripts.tools.buttonGrid
                             }
                         }
                         if (i > 0)
-                        { 
+                        {
                             if (i != Grid.Count - 1)
                             {
                                 updatedNavigationComponent.selectOnUp = Grid[i - 1].Row[j].Button;
                             }
                             //if at the last row
-                            if (i == Grid.Count-1)
+                            if (i == Grid.Count - 1)
                             {
                                 updatedNavigationComponent.selectOnDown = Grid[0].Row[j].Button;
                                 updatedNavigationComponent.selectOnUp = Grid[i - 1].Row[j].Button;
@@ -682,7 +785,7 @@ namespace Assets.Scripts.tools.buttonGrid
                         nextUpdatedNav.selectOnUp = Grid[row].Row[column].Button;
                         Grid[row + 1].Row[column].Navigation = nextUpdatedNav;
 
-                    } 
+                    }
                     if (Grid[row].Row.Count != 1)
                     {
                         updatedNavigation.selectOnRight = Grid[row].Row[column + 1].Button;
@@ -809,31 +912,40 @@ namespace Assets.Scripts.tools.buttonGrid
             updatedNavigation.mode = Navigation.Mode.Explicit;
             //where is the element located in the Grid? 
             int row = button.RowIndex;
-            int column = button.ColumnIndex; 
+            int column = button.ColumnIndex;
 
             //update left and right
             if (column == 0)
             {
                 if (row == 0) //top left --> left pointer points to bottom right most column 
                 {
-                    updatedNavigation.selectOnLeft = Grid[Grid.Count - 1].Row[Grid[Grid.Count - 1].Row.Count - 1].Button;
+                    if (WrapHorizontalNavigation)
+                    {
+                        updatedNavigation.selectOnLeft = Grid[Grid.Count - 1].Row[Grid[Grid.Count - 1].Row.Count - 1].Button;
+                    }
                     //point to right if count > 0, else point to self
                     if (Grid[row].Count > 1)
                         updatedNavigation.selectOnRight = Grid[row].Row[column + 1].Button;
-                    else updatedNavigation.selectOnRight = Grid[0].Row[0].Button;
+                    else if (WrapHorizontalNavigation)
+                    {
+                        updatedNavigation.selectOnRight = Grid[0].Row[0].Button;
+                    }
                 }
                 else if (row > 0)
                 {
-                    //check if there is a row above
-                    ButtonRow br = Grid[row - 1];
-                    int lastIndex = br.Count - 1;
-                    updatedNavigation.selectOnLeft = br.Row[lastIndex].Button;
+                    if (WrapHorizontalNavigation)
+                    {
+                        //check if there is a row above
+                        ButtonRow br = Grid[row - 1];
+                        int lastIndex = br.Count - 1;
+                        updatedNavigation.selectOnLeft = br.Row[lastIndex].Button;
+                    }
                     //check if a right pointer is possible and isnt' the last element
                     if (Grid[row].Count > 1)
                     {
                         updatedNavigation.selectOnRight = Grid[row].Row[column + 1].Button;
                     }
-                    else //then point to the first element
+                    else if (WrapHorizontalNavigation)//then point to the first element
                     {
                         updatedNavigation.selectOnRight = Grid[0].Row[0].Button;
                     }
@@ -845,25 +957,29 @@ namespace Assets.Scripts.tools.buttonGrid
                 //update select on left
                 updatedNavigation.selectOnLeft = Grid[row].Row[column - 1].Button;
                 //update select on right 
-            
-                    updatedNavigation.selectOnRight = Grid[row].Row[column + 1].Button; 
+
+                updatedNavigation.selectOnRight = Grid[row].Row[column + 1].Button;
             }
             //finally if we're at the last element in the row
             else if (column == Grid[row].Row.Count - 1)
             {
-               //point to the element on the left
+                //point to the element on the left
                 updatedNavigation.selectOnLeft = Grid[row].Row[column - 1].Button;
                 //check if there are any rows below, then point to the first element of that row
-                if (row < Grid.Count - 1)
+                if (WrapHorizontalNavigation)
                 {
-                    updatedNavigation.selectOnRight = Grid[row + 1].Row[0].Button;
+                    if (row < Grid.Count - 1)
+                    {
+                        updatedNavigation.selectOnRight = Grid[row + 1].Row[0].Button;
+                    }
+                    else //point to the first element
+                    {
+                        updatedNavigation.selectOnRight = Grid[0].Row[0].Button;
+                    }
                 }
-                else //point to the first element
-                {
-                    updatedNavigation.selectOnRight = Grid[0].Row[0].Button;
-                }
-                
-               
+
+
+
             }
 
             button.Navigation = updatedNavigation;
@@ -917,9 +1033,9 @@ namespace Assets.Scripts.tools.buttonGrid
         /// <returns></returns>
         private int CalculateMaxButtonsPerRow()
         {
-            float width = ParentRectTransform.rect.width - (_gridLayout.padding.left + _gridLayout.padding.right); 
-            float buttonWidth = _gridLayout.cellSize.x + _gridLayout.spacing.x; 
-            float allowable = Mathf.Floor(width / buttonWidth); 
+            float width = ParentRectTransform.rect.width - (_gridLayout.padding.left + _gridLayout.padding.right);
+            float buttonWidth = _gridLayout.cellSize.x + _gridLayout.spacing.x;
+            float allowable = Mathf.Floor(width / buttonWidth);
             return (int)allowable;
         }
 

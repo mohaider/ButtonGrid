@@ -21,7 +21,7 @@ namespace Assets.Scripts.tools.buttonGrid
         private bool _renderedFirstFrame=false;
 
         //these two values is to work around a severe unity limitation, where the GridLayoutGroup positions a GUI element at 0,0 then repositions a gui element
-        //calling CheckIfOutofBoundsBottom, CheckIfOutofBoundsTop would result in inconsistent results 
+        //calling CheckIfOutofBoundsBottom, CheckIfButtonOutofBoundsTop would result in inconsistent results 
         private IterableButton _previousButton; 
 
         void Awake()
@@ -46,12 +46,12 @@ namespace Assets.Scripts.tools.buttonGrid
                 if (currentButton != null && currentButton == _previousButton && !_isRepositioningParent)
                 {
 
-                    if (CheckIfOutofBoundsTop(currentButton))
+                    if (ButtonGridTools.CheckIfButtonOutofBoundsTop(_gridLayoutGroup, _scrollRect, _parentRectTransform, currentButton))
                     {
                         _isRepositioningParent = true;
                         StartCoroutine(RepositionParent(currentButton.RectTransform.position)); 
                     }
-                    else if (CheckIfOutofBoundsBottom(currentButton))
+                    else if (ButtonGridTools.CheckIfButtonOutBoundsBottom(_gridLayoutGroup, _scrollRect, _parentRectTransform, currentButton))
                     {
                         _isRepositioningParent = true;
                         StartCoroutine(RepositionParent(currentButton.RectTransform.position));
@@ -111,32 +111,38 @@ namespace Assets.Scripts.tools.buttonGrid
                 yield return null;
             }
         }
+      
+    }
+   
+    public static class ButtonGridTools
+    {
         /// <summary>
-        /// checks if the button is outside the top bounds of the parent scroll rect
+        /// Checks if the button is out of bounds from the button, from the scrollRectsParent
         /// </summary>
+        /// <param name="layoutGroup"></param>
+        /// <param name="scrollRect"></param>
+        /// <param name="scrollRectsParent"></param>
         /// <param name="button"></param>
         /// <returns></returns>
-        private bool CheckIfOutofBoundsTop(IterableButton button)
+        public static bool CheckIfButtonOutBoundsBottom(GridLayoutGroup layoutGroup, ScrollRect scrollRect,
+            RectTransform scrollRectsParent, IterableButton button)
+        {
+            float buttonHalfHeight = layoutGroup.cellSize.y / 2;
+            float verticalButtonPadding = layoutGroup.padding.bottom;
+            float lowerButtonBound = button.RectTransform.position.y - buttonHalfHeight - verticalButtonPadding - layoutGroup.spacing.y;
+            float lowerBounds = scrollRect.transform.position.y - (scrollRectsParent.rect.height / 2);
+            return lowerButtonBound < lowerBounds; 
+        }
+
+        public static bool CheckIfButtonOutofBoundsTop(GridLayoutGroup layoutGroup, ScrollRect scrollRect,
+            RectTransform scrollRectsParent, IterableButton button)
         {
             //calculate the vertical bound of the button. Its height is set by the grid layout group
-            float buttonHalfHeight = _gridLayoutGroup.cellSize.y/2;
-            float verticalButtonPadding = _gridLayoutGroup.padding.top;
+            float buttonHalfHeight = layoutGroup.cellSize.y / 2;
+            float verticalButtonPadding = layoutGroup.padding.top;
             float upperButtonBounds = button.transform.position.y + buttonHalfHeight + verticalButtonPadding;
-            float upperBounds = _scrollRect.transform.position.y + (_parentRectTransform.rect.height/2); 
-            return upperButtonBounds > upperBounds; 
-        }
-        /// <summary>
-        /// checks if the button is outside the bottom bounds of the parent scroll rect
-        /// </summary>
-        /// <param name="button"></param>
-        /// <returns></returns>
-        private bool CheckIfOutofBoundsBottom(IterableButton button)
-        { 
-            float buttonHalfHeight = _gridLayoutGroup.cellSize.y / 2;
-            float verticalButtonPadding = _gridLayoutGroup.padding.bottom;
-            float lowerButtonBound = button.RectTransform.position.y - buttonHalfHeight - verticalButtonPadding -_gridLayoutGroup.spacing.y;
-            float lowerBounds = _scrollRect.transform.position.y - (_parentRectTransform.rect.height / 2); 
-            return lowerButtonBound < lowerBounds; 
+            float upperBounds = scrollRect.transform.position.y + (scrollRectsParent.rect.height / 2);
+            return upperButtonBounds > upperBounds;
         }
     }
 }
