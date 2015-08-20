@@ -9,7 +9,7 @@ public class InsertNewButtonScript : MonoBehaviour
 
     void Start()
     {
-         Grid.InsertMultipleButtons(NumberOfButtons);
+      Grid.InsertMultipleButtons(NumberOfButtons);
     }
     public void InsertNewButton()
     {

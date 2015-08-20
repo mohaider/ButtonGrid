@@ -45,6 +45,11 @@ namespace Assets.Scripts.tools.buttonGrid
 
         public Button Button { get; set; }
 
+        public RectTransform RectTransform
+        {
+            get { return Button.GetComponent<RectTransform>(); }
+           
+        }
 
         /// <summary>
         /// Initializes the Button with its rowId, column Id and its button

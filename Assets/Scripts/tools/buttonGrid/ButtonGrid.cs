@@ -16,6 +16,7 @@ namespace Assets.Scripts.tools.buttonGrid
     public class ButtonGrid : MonoBehaviour
     {
         public GameObject ButtonPrefab;
+        public Color HighlightedButtonColor;
         private List<ButtonRow> _grid;
         private List<IterableButton> _inactiveButtonPool;
         private ButtonRow _lastRowUsed;//The list that was used last. Keep a reference to this in order to add button components to this list
@@ -143,11 +144,14 @@ namespace Assets.Scripts.tools.buttonGrid
                 if (ButtonPrefab == null)
                 {
                     var emptyGameObject = new GameObject("Button");
+                    emptyGameObject.transform.SetParent(ParentRectTransform);  
                     emptyGameObject.AddComponent<Image>();
                     Button button = emptyGameObject.AddComponent<Button>();
+                    ColorBlock colors = button.colors;
+                    colors.highlightedColor = HighlightedButtonColor;
+                    button.colors = colors;
                     IterableButton b = emptyGameObject.AddComponent<IterableButton>();
-                    b.Init(rowId, columnId, button);
-                    emptyGameObject.transform.SetParent(ParentRectTransform);  
+                    b.Init(rowId, columnId, button); 
                     b.transform.SetAsLastSibling();
                     return b;
 
@@ -156,9 +160,12 @@ namespace Assets.Scripts.tools.buttonGrid
                     try
                     {
                         GameObject go = Instantiate(ButtonPrefab);
-                        go.transform.parent = ParentRectTransform;
+                        go.transform.SetParent(ParentRectTransform); 
                         IterableButton b = go.AddComponent<IterableButton>();
                         Button button = GetComponent<Button>();
+                        ColorBlock colors = button.colors;
+                        colors.highlightedColor = HighlightedButtonColor;
+                        button.colors = colors;
                         b.Init(rowId, columnId, button);
                         b.transform.SetAsLastSibling();
                         return b;
@@ -235,7 +242,8 @@ namespace Assets.Scripts.tools.buttonGrid
                     _lastRowUsed = newRow;
                 }
                 button = _rootButton;
-                EventSystem.current.SetSelectedGameObject(_rootButton.Button.gameObject );
+                 EventSystem.current.SetSelectedGameObject(_rootButton.Button.gameObject );
+ 
             }
             else //yes. now check if its possible to insert this new button into the last row that was used.
             {
