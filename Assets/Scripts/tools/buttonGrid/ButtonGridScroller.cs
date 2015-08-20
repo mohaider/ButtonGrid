@@ -32,10 +32,14 @@ namespace Assets.Scripts.tools.buttonGrid
             _parentRectTransform = _scrollRect.GetComponent<RectTransform>();
             _currentRectTransform = GetComponent<RectTransform>();
         }
- 
 
+        public bool _debug;
         void LateUpdate()
         {
+            if (_debug)
+            {
+                Debug.Log("startit");
+            }
             //check what the current selected game object is
             GameObject currentSelectedGameObject = EventSystem.current.currentSelectedGameObject;
             //get the iterable button
@@ -49,14 +53,16 @@ namespace Assets.Scripts.tools.buttonGrid
                     if (ButtonGridTools.CheckIfButtonOutofBoundsTop(_gridLayoutGroup, _scrollRect, _parentRectTransform, currentButton))
                     {
                         _isRepositioningParent = true;
+                        Debug.Log("here1");
                         StartCoroutine(RepositionParent(currentButton.RectTransform.position)); 
                     }
                     else if (ButtonGridTools.CheckIfButtonOutBoundsBottom(_gridLayoutGroup, _scrollRect, _parentRectTransform, currentButton))
                     {
                         _isRepositioningParent = true;
+                        Debug.Log("here");
                         StartCoroutine(RepositionParent(currentButton.RectTransform.position));
                         }
-
+                   
                 }
                 _previousButton = currentButton;
             }
@@ -106,6 +112,7 @@ namespace Assets.Scripts.tools.buttonGrid
                 if (percentageCompleted >= 1.0f)
                 {
                     _isRepositioningParent = false;
+                    _grid.UpdateColumnAndRowNavs();
                     yield break;
                 }
                 yield return null;

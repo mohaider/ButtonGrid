@@ -146,7 +146,7 @@ namespace Assets.Scripts.tools.buttonGrid
 
         void Awake()
         {
-            _groupScrollRect = transform.parent.GetComponent<ScrollRect>();
+            _groupScrollRect = GetComponent<ScrollRect>();
         }
 
 
@@ -359,14 +359,23 @@ namespace Assets.Scripts.tools.buttonGrid
             }
             if (_count == 1)
             {
-                VisibleTopRow = new List<IterableButton>(1);
-                VisibleTopRow.Add(_rootButton);
+                VisibleBottomRow = new List<IterableButton>(1);
+                VisibleBottomRow.Add(_rootButton);
                 return;
             }
             IterableButton button = _rootButton;
             //traverse the left column starting from the bottom, break on first visible button
-            for (int i = LeftColumn.Count; i >0; i++)
+            
+            for (int i = LeftColumn.Count-1; i >=0; i--)
             {
+                try
+                {
+                    button = LeftColumn[i];
+                }
+                catch (Exception)
+                {
+                     Debug.Log("da");
+                }
                 button = LeftColumn[i];
                 if (ButtonGridTools.CheckIfButtonOutBoundsBottom(_gridLayout, _groupScrollRect, ParentRectTransform,
                     button))
@@ -380,7 +389,8 @@ namespace Assets.Scripts.tools.buttonGrid
                 int index = button.RowIndex;
                 for (int i = 0; i < Grid[index].Count; i++)
                 {
-                    .Add(Grid[index].Row[i]);
+                    Debug.Log(i);
+                    VisibleBottomRow.Add(Grid[index].Row[i]);
                 }
             }
         }
@@ -402,7 +412,46 @@ namespace Assets.Scripts.tools.buttonGrid
             {
                 ButtonRow br = Grid[i];
                 int lastIndex = br.Count - 1;
-                LeftColumn.Add(br.Row[lastIndex]);
+                RightColumn.Add(br.Row[lastIndex]);
+            }
+        }
+
+        private void SetColumnsNavToAuto()
+        {
+            for (int i = 0; i < LeftColumn.Count; i++)
+            {
+                IterableButton button = LeftColumn[i];
+                Navigation newNav = new Navigation();
+                newNav.mode = Navigation.Mode.Automatic;
+                button.Navigation = newNav;
+            } for (int i = 0; i < RightColumn.Count; i++)
+            {
+                IterableButton button = RightColumn[i];
+                Navigation newNav = new Navigation();
+                newNav.mode = Navigation.Mode.Automatic;
+                button.Navigation = newNav;
+            }
+
+        }
+
+       public  void UpdateColumnAndRowNavs()
+        {
+            UpdateLeftColumn();
+            UpdateRightColumn();
+            UpdateBottomRow(); 
+           UpdateTopRow();
+           SetColumnsNavToAuto();
+           SetBottomRowNavtoAuto();
+        }
+
+        private void SetBottomRowNavtoAuto()
+        {
+               for (int i = 0; i < VisibleBottomRow.Count; i++)
+            {
+                IterableButton button = VisibleBottomRow[i];
+                Navigation newNav = new Navigation();
+                newNav.mode = Navigation.Mode.Automatic;
+                button.Navigation = newNav;
             }
         }
         /// <summary>
@@ -537,6 +586,7 @@ namespace Assets.Scripts.tools.buttonGrid
                 }
             }
             _isUpdating = false;
+            UpdateColumnAndRowNavs();
         }
 
         /// <summary>
@@ -545,7 +595,7 @@ namespace Assets.Scripts.tools.buttonGrid
         private void UpdateAllVerticalNavigation()
         {
             for (int i = 0; i < Grid.Count; i++)
-            {
+            {   
                 for (int j = 0; j < Grid[i].Count; j++)
                 {
                     Navigation buttonNavigation = Grid[i].Row[j].Navigation;
@@ -596,12 +646,7 @@ namespace Assets.Scripts.tools.buttonGrid
                     Grid[i].Row[j].Navigation = updatedNavigationComponent;
                 }
             }
-        }
-        public void UpdateInsertedButtonNavigation(IterableButton button)
-        {
-
-        }
-
+        } 
         /// <summary>
         /// Shifts the buttons to the right starting at index row, column
         /// </summary>
